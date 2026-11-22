@@ -1,9 +1,0 @@
-{
-  "name": "Trinetray Workspace",
-  "short_name": "Workspace",
-  "start_url": "/login",
-  "display": "standalone",
-  "background_color": "#f9fcff",
-  "theme_color": "#081f5c",
-  "icons": []
-}

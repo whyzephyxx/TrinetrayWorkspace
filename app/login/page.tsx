@@ -16,6 +16,11 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 
+function indianNumber(value: string) {
+  const digits = value.replace(/\D/g, '').replace(/^91/, '');
+  return `+91${digits}`;
+}
+
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -23,7 +28,6 @@ export default function LoginPage() {
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const [needsMobile, setNeedsMobile] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -49,12 +53,17 @@ export default function LoginPage() {
       const registration = sessionStorage.getItem(
         'workspace-registration'
       );
+
       const profile = registration
         ? JSON.parse(registration)
         : {};
 
-      if (needsMobile) {
-        profile.mobileNumber = mobileNumber.trim();
+      const enteredMobile = mobileNumber.trim();
+
+      if (enteredMobile) {
+        profile.mobileNumber = indianNumber(enteredMobile);
+      } else if (profile.mobileNumber) {
+        profile.mobileNumber = indianNumber(profile.mobileNumber);
       }
 
       const response = await fetch('/api/auth/provision', {
@@ -73,8 +82,7 @@ export default function LoginPage() {
         body.error ===
           'A valid mobile number is required to complete registration.'
       ) {
-        setNeedsMobile(true);
-        setError('Enter your mobile number to complete registration.');
+        setError('Enter your 10-digit mobile number to complete registration.');
         return;
       }
 
@@ -87,11 +95,24 @@ export default function LoginPage() {
       sessionStorage.removeItem('workspace-registration');
       window.location.href = '/dashboard';
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Unable to sign in. Please try again.'
-      );
+      const code =
+        err && typeof err === 'object' && 'code' in err
+          ? String(err.code)
+          : '';
+
+      if (
+        code === 'auth/invalid-credential' ||
+        code === 'auth/wrong-password' ||
+        code === 'auth/user-not-found'
+      ) {
+        setError('Incorrect email or password. Please try again.');
+      } else {
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Unable to sign in. Please try again.'
+        );
+      }
     } finally {
       setBusy(false);
     }
@@ -102,9 +123,7 @@ export default function LoginPage() {
       <section className="auth-aside">
         <div className="brand">
           <div className="brand-mark">T</div>
-          <span>
-            Trinetray <b>Workspace</b>
-          </span>
+          <span>Trinetray <b>Workspace</b></span>
         </div>
 
         <div className="aside-copy">
@@ -174,20 +193,28 @@ export default function LoginPage() {
             </div>
           </label>
 
-          {needsMobile && (
-            <label>
-              Mobile number
+          <label>
+            Mobile number
+            <div className="mobile-number-wrap">
+              <span>+91</span>
               <input
                 type="tel"
-                autoComplete="tel"
-                required
+                inputMode="numeric"
+                autoComplete="tel-national"
+                maxLength={10}
                 value={mobileNumber}
-                onChange={e => setMobileNumber(e.target.value)}
-                placeholder="+91 98765 43210"
-                pattern="[+]?[0-9 ()-]{8,20}"
+                onChange={e =>
+                  setMobileNumber(
+                    e.target.value.replace(/\D/g, '').slice(0, 10)
+                  )
+                }
+                placeholder="10-digit mobile number"
               />
-            </label>
-          )}
+            </div>
+            <small className="mobile-hint">
+              Needed only when completing your first registration.
+            </small>
+          </label>
 
           {error && (
             <div className="form-error" role="alert">

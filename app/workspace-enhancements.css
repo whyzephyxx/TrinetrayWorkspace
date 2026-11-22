@@ -1,0 +1,130 @@
+/* Workspace responsive and theme layer. Existing application styles remain intact. */
+
+.theme-control {
+  position: fixed;
+  z-index: 30;
+  right: 18px;
+  bottom: 18px;
+}
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--line, #e6ebf3);
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  color: var(--text, #14213d);
+  box-shadow: 0 5px 18px #14213d18;
+  font-size: 12px;
+  font-weight: 700;
+}
+.theme-toggle:hover { transform: translateY(-2px); }
+.theme-toggle:focus-visible { outline: 3px solid #8aaeff; outline-offset: 3px; }
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --paper: #101522;
+  --ink: #e7ecf5;
+  --muted: #9ba8bc;
+  --line: #2a3447;
+  --surface: #171f2e;
+  --text: #e7ecf5;
+}
+html[data-theme="dark"] body,
+html[data-theme="dark"] .workspace { background: #101522; color: #e7ecf5; }
+html[data-theme="dark"] .rail,
+html[data-theme="dark"] .topbar,
+html[data-theme="dark"] .panel,
+html[data-theme="dark"] .metric-card,
+html[data-theme="dark"] .profile-menu,
+html[data-theme="dark"] .profile-menu button,
+html[data-theme="dark"] .search-trigger,
+html[data-theme="dark"] .theme-toggle {
+  background: #171f2e;
+  color: #e7ecf5;
+  border-color: #2a3447;
+}
+html[data-theme="dark"] .welcome-row h1,
+html[data-theme="dark"] .metric-card strong,
+html[data-theme="dark"] .panel-head h3,
+html[data-theme="dark"] .empty-state b,
+html[data-theme="dark"] .crumb b { color: #e7ecf5; }
+html[data-theme="dark"] .muted,
+html[data-theme="dark"] .crumb,
+html[data-theme="dark"] .metric-top,
+html[data-theme="dark"] .metric-card small,
+html[data-theme="dark"] .empty-state span { color: #9ba8bc; }
+html[data-theme="dark"] input,
+html[data-theme="dark"] select,
+html[data-theme="dark"] textarea {
+  background: #111a29;
+  color: #e7ecf5;
+  border-color: #344158;
+}
+html[data-theme="dark"] .rail-item { color: #a4b0c4; }
+html[data-theme="dark"] .rail-item:hover,
+html[data-theme="dark"] .rail-item.selected { background: #24334d; color: #c6d8ff; }
+html[data-theme="dark"] .text-button,
+html[data-theme="dark"] .more-button { color: #a9c3ff; }
+html[data-theme="dark"] .avatar,
+html[data-theme="dark"] .metric-top i,
+html[data-theme="dark"] .empty-icon { background: #263650; color: #c5d7ff; }
+html[data-theme="dark"] .page-footer { color: #7f8ba0; }
+html[data-theme="dark"] .auth-main,
+html[data-theme="dark"] .auth-card { background: #101522; color: #e7ecf5; }
+html[data-theme="dark"] .auth-card label { color: #c6d0df; }
+html[data-theme="dark"] .auth-card input { background: #171f2e; color: #e7ecf5; border-color: #344158; }
+
+/* Hide the visible admin shortcut; the protected /admin verification route remains. */
+.rail-item[title="Admin access"] { display: none !important; }
+
+/* Phone-first bottom navigation, retaining the existing navigation controls. */
+@media (max-width: 700px) {
+  .rail {
+    position: fixed;
+    inset: auto 0 0 0;
+    width: 100%;
+    height: calc(66px + env(safe-area-inset-bottom));
+    padding: 6px 8px env(safe-area-inset-bottom);
+    border-right: 0;
+    border-top: 1px solid var(--line, #e6ebf3);
+    flex-direction: row;
+    justify-content: center;
+    background: var(--surface, #fff);
+  }
+  .rail-brand, .rail-bottom { display: none !important; }
+  .rail-nav {
+    width: 100%;
+    max-width: 620px;
+    flex-direction: row;
+    justify-content: space-around;
+    gap: 2px;
+  }
+  .rail-item {
+    width: auto;
+    min-width: 0;
+    min-height: 50px;
+    flex: 1;
+    padding: 5px 2px;
+    gap: 4px;
+    font-size: 9px;
+    border-radius: 10px;
+  }
+  .rail-item svg { width: 18px; height: 18px; }
+  .workspace-main { margin-left: 0 !important; width: 100% !important; }
+  .content { padding-bottom: 92px !important; }
+  .theme-control { right: 12px; bottom: calc(78px + env(safe-area-inset-bottom)); }
+  .theme-toggle { min-height: 38px; padding: 0 12px; }
+}
+@media (max-width: 420px) {
+  .rail-item span { font-size: 8px; }
+  .topbar { padding-inline: 10px !important; }
+  .top-actions { gap: 3px !important; }
+  .content { padding-inline: 12px !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle { transition: none !important; }
+}

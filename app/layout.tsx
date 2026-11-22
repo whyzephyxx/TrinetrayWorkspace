@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import './workspace-enhancements.css';
+import ThemeToggle from '@/components/theme-toggle';
 
 export const metadata: Metadata = {
   title: 'Trinetray Workspace',
@@ -9,5 +11,12 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <div className="theme-control"><ThemeToggle /></div>
+        {children}
+      </body>
+    </html>
+  );
 }

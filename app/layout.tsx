@@ -1,30 +1,13 @@
-import type { Metadata, Viewport } from "next";
-import "./globals.css";
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "Trinetray Workspace | Team workspace concept",
-  description:
-    "A simple workspace concept for team tasks, conversations and updates.",
-  robots: {
-    index: false,
-    follow: false,
-  },
+  title: 'Trinetray Workspace',
+  description: 'A focused workspace for tasks, communication and team coordination.',
+  manifest: '/manifest.webmanifest',
+  applicationName: 'Trinetray Workspace',
 };
 
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  themeColor: "#081f5c",
-};
-
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  return <html lang="en"><body>{children}</body></html>;
 }

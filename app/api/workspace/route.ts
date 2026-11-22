@@ -1,8 +1,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
-import { authError, requireWorkspaceUser, requireAdminSession } from '@/lib/workspace-auth';
+import {
+  authError,
+  requireWorkspaceUser,
+  requireAdminSession
+} from '@/lib/workspace-auth';
 
 export const runtime = 'nodejs';
+
 const adminRoles = ['founder_admin', 'admin'];
 
 export async function GET(request: NextRequest) {
@@ -20,16 +25,29 @@ export async function GET(request: NextRequest) {
       if (error) throw error;
 
       const ids = (tasks || []).map(t => t.id);
+
       const { data: audiences } = ids.length
-        ? await supabase.from('task_audience').select('task_id,employee_id').in('task_id', ids)
+        ? await supabase
+            .from('task_audience')
+            .select('task_id,employee_id')
+            .in('task_id', ids)
         : { data: [] };
 
       const visible = (tasks || []).filter(t =>
         t.assigned_to === profile.id ||
         t.assigned_by === profile.id ||
         t.visibility === 'company' ||
-        (t.visibility === 'department' && profile.department_id && t.department_id === profile.department_id) ||
-        (t.visibility === 'selected' && (audiences || []).some(a => a.task_id === t.id && a.employee_id === profile.id))
+        (
+          t.visibility === 'department' &&
+          profile.department_id &&
+          t.department_id === profile.department_id
+        ) ||
+        (
+          t.visibility === 'selected' &&
+          (audiences || []).some(
+            a => a.task_id === t.id && a.employee_id === profile.id
+          )
+        )
       );
 
       return NextResponse.json({ items: visible });
@@ -44,6 +62,7 @@ export async function GET(request: NextRequest) {
         .order('full_name');
 
       if (error) throw error;
+
       return NextResponse.json({ items: data || [] });
     }
 
@@ -56,6 +75,7 @@ export async function GET(request: NextRequest) {
         .limit(100);
 
       if (error) throw error;
+
       return NextResponse.json({ items: data || [] });
     }
 
@@ -66,26 +86,45 @@ export async function GET(request: NextRequest) {
         .eq('employee_id', profile.id);
 
       if (error) throw error;
+
       return NextResponse.json({ items: data || [] });
     }
 
     if (type === 'admin') {
-      if (!adminRoles.includes(profile.role) || !requireAdminSession(request, profile.firebase_uid)) {
-        return NextResponse.json({ error: 'Complete administrator verification first.' }, { status: 403 });
+      if (
+        !adminRoles.includes(profile.role) ||
+        !requireAdminSession(request, profile.firebase_uid)
+      ) {
+        return NextResponse.json(
+          { error: 'Complete administrator verification first.' },
+          { status: 403 }
+        );
       }
 
       const [
         { data: pending, error: e1 },
         { data: employees, error: e2 }
       ] = await Promise.all([
-        supabase.from('profiles').select('id,email,full_name,designation,created_at').eq('approval_status', 'pending').order('created_at'),
-        supabase.from('profiles').select('id,email,full_name,designation,role,approval_status,created_at').order('created_at', { ascending: false }).limit(250)
+        supabase
+          .from('profiles')
+          .select('id,email,full_name,designation,created_at')
+          .eq('approval_status', 'pending')
+          .order('created_at'),
+
+        supabase
+          .from('profiles')
+          .select('id,email,full_name,designation,role,approval_status,created_at')
+          .order('created_at', { ascending: false })
+          .limit(250)
       ]);
 
       if (e1) throw e1;
       if (e2) throw e2;
 
-      return NextResponse.json({ pending: pending || [], employees: employees || [] });
+      return NextResponse.json({
+        pending: pending || [],
+        employees: employees || []
+      });
     }
 
     if (type === 'analytics') {
@@ -95,10 +134,24 @@ export async function GET(request: NextRequest) {
         { count: openTasks },
         { count: staff }
       ] = await Promise.all([
-        supabase.from('tasks').select('*', { count: 'exact', head: true }),
-        supabase.from('tasks').select('*', { count: 'exact', head: true }).eq('status', 'completed'),
-        supabase.from('tasks').select('*', { count: 'exact', head: true }).neq('status', 'completed'),
-        supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('approval_status', 'approved')
+        supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true }),
+
+        supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'completed'),
+
+        supabase
+          .from('tasks')
+          .select('*', { count: 'exact', head: true })
+          .neq('status', 'completed'),
+
+        supabase
+          .from('profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('approval_status', 'approved')
       ]);
 
       return NextResponse.json({
@@ -119,7 +172,12 @@ export async function GET(request: NextRequest) {
         .eq('employee_id', profile.id)
         .maybeSingle();
 
-      if (!member) return NextResponse.json({ error: 'Conversation not found.' }, { status: 404 });
+      if (!member) {
+        return NextResponse.json(
+          { error: 'Conversation not found.' },
+          { status: 404 }
+        );
+      }
 
       const { data, error } = await supabase
         .from('messages')
@@ -129,30 +187,53 @@ export async function GET(request: NextRequest) {
         .limit(300);
 
       if (error) throw error;
+
       return NextResponse.json({ items: data || [] });
     }
 
     if (type === 'search') {
-      const q = (request.nextUrl.searchParams.get('q') || '').trim().slice(0, 80);
+      const q = (request.nextUrl.searchParams.get('q') || '')
+        .trim()
+        .slice(0, 80);
 
-      if (q.length < 2) return NextResponse.json({ tasks: [], people: [] });
+      if (q.length < 2) {
+        return NextResponse.json({ tasks: [], people: [] });
+      }
 
       const [
         { data: tasks },
         { data: people }
       ] = await Promise.all([
-        supabase.from('tasks').select('id,title,status,assigned_to,assigned_by').ilike('title', `%${q}%`).limit(15),
-        supabase.from('profiles').select('id,full_name,email').eq('approval_status', 'approved').eq('directory_visible', true).or(`full_name.ilike.%${q}%,email.ilike.%${q}%`).limit(15)
+        supabase
+          .from('tasks')
+          .select('id,title,status,assigned_to,assigned_by')
+          .ilike('title', `%${q}%`)
+          .limit(15),
+
+        supabase
+          .from('profiles')
+          .select('id,full_name,email')
+          .eq('approval_status', 'approved')
+          .eq('directory_visible', true)
+          .or(`full_name.ilike.%${q}%,email.ilike.%${q}%`)
+          .limit(15)
       ]);
 
       const allowedTasks = (tasks || []).filter(t =>
-        t.assigned_to === profile.id || t.assigned_by === profile.id
+        t.assigned_to === profile.id ||
+        t.assigned_by === profile.id
       );
 
-      return NextResponse.json({ tasks: allowedTasks, people: people || [] });
+      return NextResponse.json({
+        tasks: allowedTasks,
+        people: people || []
+      });
     }
 
-    return NextResponse.json({ error: 'Unknown workspace resource.' }, { status: 404 });
+    return NextResponse.json(
+      { error: 'Unknown workspace resource.' },
+      { status: 404 }
+    );
   } catch (error) {
     return authError(error);
   }
@@ -167,11 +248,49 @@ export async function POST(request: NextRequest) {
     if (action === 'create_task') {
       const title = String(body.title || '').trim().slice(0, 180);
       const description = String(body.description || '').trim().slice(0, 5000);
-      const assignedTo = String(body.assigned_to || profile.id);
-      const priority = ['low', 'medium', 'high', 'urgent'].includes(body.priority) ? body.priority : 'medium';
-      const visibility = ['private', 'department', 'company', 'selected'].includes(body.visibility) ? body.visibility : 'private';
 
-      if (!title) return NextResponse.json({ error: 'A task title is required.' }, { status: 400 });
+      const assignedTo = String(body.assigned_to || '').trim();
+
+      const priority = [
+        'low',
+        'medium',
+        'high',
+        'urgent'
+      ].includes(body.priority)
+        ? body.priority
+        : 'medium';
+
+      const visibility = [
+        'private',
+        'department',
+        'company',
+        'selected'
+      ].includes(body.visibility)
+        ? body.visibility
+        : 'private';
+
+      if (!title) {
+        return NextResponse.json(
+          { error: 'A task title is required.' },
+          { status: 400 }
+        );
+      }
+
+      if (!assignedTo) {
+        return NextResponse.json(
+          { error: 'Choose another approved employee to assign this task.' },
+          { status: 400 }
+        );
+      }
+
+      if (assignedTo === profile.id) {
+        return NextResponse.json(
+          {
+            error: 'Self-assignment is not allowed. Assign this task to another employee.'
+          },
+          { status: 400 }
+        );
+      }
 
       const { data: assignee, error: assigneeError } = await supabase
         .from('profiles')
@@ -180,12 +299,21 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (assigneeError) throw assigneeError;
+
       if (!assignee || assignee.approval_status !== 'approved') {
-        return NextResponse.json({ error: 'Choose an approved employee.' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Choose an approved employee.' },
+          { status: 400 }
+        );
       }
 
       if (visibility === 'department' && !profile.department_id) {
-        return NextResponse.json({ error: 'Set your department before creating a department task.' }, { status: 400 });
+        return NextResponse.json(
+          {
+            error: 'Set your department before creating a department task.'
+          },
+          { status: 400 }
+        );
       }
 
       const { data: task, error } = await supabase
@@ -195,7 +323,10 @@ export async function POST(request: NextRequest) {
           description: description || null,
           assigned_by: profile.id,
           assigned_to: assignedTo,
-          department_id: visibility === 'department' ? profile.department_id : null,
+          department_id:
+            visibility === 'department'
+              ? profile.department_id
+              : null,
           priority,
           visibility,
           due_at: body.due_at || null
@@ -205,17 +336,30 @@ export async function POST(request: NextRequest) {
 
       if (error) throw error;
 
-      if (visibility === 'selected' && Array.isArray(body.audience_ids)) {
+      if (
+        visibility === 'selected' &&
+        Array.isArray(body.audience_ids)
+      ) {
         const audienceValues: unknown[] = body.audience_ids;
+
         const validIds = audienceValues.filter(
-          (value): value is string => typeof value === 'string' && value.length > 0 && value.length < 50
+          (value): value is string =>
+            typeof value === 'string' &&
+            value.length > 0 &&
+            value.length < 50
         );
+
         const ids = [...new Set<string>(validIds)].slice(0, 100);
 
         if (ids.length) {
           const { error: audienceError } = await supabase
             .from('task_audience')
-            .insert(ids.map(employee_id => ({ task_id: task.id, employee_id })));
+            .insert(
+              ids.map(employee_id => ({
+                task_id: task.id,
+                employee_id
+              }))
+            );
 
           if (audienceError) throw audienceError;
         }
@@ -228,15 +372,13 @@ export async function POST(request: NextRequest) {
         details: { title }
       });
 
-      if (assignedTo !== profile.id) {
-        await supabase.from('notifications').insert({
-          recipient_id: assignedTo,
-          task_id: task.id,
-          notification_type: 'task_assigned',
-          title: 'New task assigned',
-          message: title
-        });
-      }
+      await supabase.from('notifications').insert({
+        recipient_id: assignedTo,
+        task_id: task.id,
+        notification_type: 'task_assigned',
+        title: 'New task assigned',
+        message: title
+      });
 
       return NextResponse.json({ item: task });
     }
@@ -251,20 +393,40 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (taskError) throw taskError;
-      if (!task) return NextResponse.json({ error: 'Task not found.' }, { status: 404 });
 
-      const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (!task) {
+        return NextResponse.json(
+          { error: 'Task not found.' },
+          { status: 404 }
+        );
+      }
 
-      if (body.status === 'completed' && task.assigned_to === profile.id) {
+      const patch: Record<string, unknown> = {
+        updated_at: new Date().toISOString()
+      };
+
+      if (
+        body.status === 'completed' &&
+        task.assigned_to === profile.id
+      ) {
         patch.status = 'completed';
         patch.completed_at = new Date().toISOString();
-      } else if (body.status === 'pending' && task.assigned_by === profile.id) {
+      } else if (
+        body.status === 'pending' &&
+        task.assigned_by === profile.id
+      ) {
         patch.status = 'pending';
         patch.completed_at = null;
-      } else if (body.status === 'in_progress' && task.assigned_to === profile.id) {
+      } else if (
+        body.status === 'in_progress' &&
+        task.assigned_to === profile.id
+      ) {
         patch.status = 'in_progress';
       } else {
-        return NextResponse.json({ error: 'You cannot make that change to this task.' }, { status: 403 });
+        return NextResponse.json(
+          { error: 'You cannot make that change to this task.' },
+          { status: 403 }
+        );
       }
 
       const { data: item, error } = await supabase
@@ -289,7 +451,10 @@ export async function POST(request: NextRequest) {
           task_id: id,
           notification_type: 'task_update',
           title: 'Task updated',
-          message: patch.status === 'pending' ? 'A task was reopened.' : 'A task was marked complete.'
+          message:
+            patch.status === 'pending'
+              ? 'A task was reopened.'
+              : 'A task was marked complete.'
         });
       }
 
@@ -297,15 +462,22 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'start_conversation') {
-      const ids = [...new Set([
-        profile.id,
-        ...(Array.isArray(body.employee_ids)
-          ? body.employee_ids.filter((value: unknown) => typeof value === 'string')
-          : [])
-      ])].slice(0, 30);
+      const ids = [
+        ...new Set([
+          profile.id,
+          ...(Array.isArray(body.employee_ids)
+            ? body.employee_ids.filter(
+                (value: unknown) => typeof value === 'string'
+              )
+            : [])
+        ])
+      ].slice(0, 30);
 
       if (ids.length < 2) {
-        return NextResponse.json({ error: 'Select at least one other employee.' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Select at least one other employee.' },
+          { status: 400 }
+        );
       }
 
       const { data: people, error: peopleError } = await supabase
@@ -315,8 +487,12 @@ export async function POST(request: NextRequest) {
         .eq('approval_status', 'approved');
 
       if (peopleError) throw peopleError;
+
       if ((people || []).length !== ids.length) {
-        return NextResponse.json({ error: 'One or more employees are unavailable.' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'One or more employees are unavailable.' },
+          { status: 400 }
+        );
       }
 
       const { data: conversation, error } = await supabase
@@ -333,9 +509,15 @@ export async function POST(request: NextRequest) {
 
       const { error: membersError } = await supabase
         .from('conversation_members')
-        .insert(ids.map(employee_id => ({ conversation_id: conversation.id, employee_id })));
+        .insert(
+          ids.map(employee_id => ({
+            conversation_id: conversation.id,
+            employee_id
+          }))
+        );
 
       if (membersError) throw membersError;
+
       return NextResponse.json({ item: conversation });
     }
 
@@ -344,7 +526,10 @@ export async function POST(request: NextRequest) {
       const message = String(body.message || '').trim().slice(0, 10000);
 
       if (!conversationId || !message) {
-        return NextResponse.json({ error: 'Choose a conversation and enter a message.' }, { status: 400 });
+        return NextResponse.json(
+          { error: 'Choose a conversation and enter a message.' },
+          { status: 400 }
+        );
       }
 
       const { data: member } = await supabase
@@ -354,19 +539,31 @@ export async function POST(request: NextRequest) {
         .eq('employee_id', profile.id)
         .maybeSingle();
 
-      if (!member) return NextResponse.json({ error: 'Conversation not found.' }, { status: 404 });
+      if (!member) {
+        return NextResponse.json(
+          { error: 'Conversation not found.' },
+          { status: 404 }
+        );
+      }
 
       const { data: item, error } = await supabase
         .from('messages')
-        .insert({ conversation_id: conversationId, sender_id: profile.id, body: message })
+        .insert({
+          conversation_id: conversationId,
+          sender_id: profile.id,
+          body: message
+        })
         .select('*')
         .single();
 
       if (error) throw error;
 
-      await supabase.from('conversations').update({
-        updated_at: new Date().toISOString()
-      }).eq('id', conversationId);
+      await supabase
+        .from('conversations')
+        .update({
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', conversationId);
 
       const { data: members } = await supabase
         .from('conversation_members')
@@ -391,39 +588,62 @@ export async function POST(request: NextRequest) {
     if (action === 'mark_notification_read') {
       const { error } = await supabase
         .from('notifications')
-        .update({ read_at: new Date().toISOString() })
+        .update({
+          read_at: new Date().toISOString()
+        })
         .eq('id', String(body.id || ''))
         .eq('recipient_id', profile.id);
 
       if (error) throw error;
+
       return NextResponse.json({ ok: true });
     }
 
     if (action === 'admin_review') {
-      if (!adminRoles.includes(profile.role) || !requireAdminSession(request, profile.firebase_uid)) {
-        return NextResponse.json({ error: 'Complete administrator verification first.' }, { status: 403 });
+      if (
+        !adminRoles.includes(profile.role) ||
+        !requireAdminSession(request, profile.firebase_uid)
+      ) {
+        return NextResponse.json(
+          { error: 'Complete administrator verification first.' },
+          { status: 403 }
+        );
       }
 
       const target = String(body.employee_id || '');
-      const decision = body.decision === 'approve'
-        ? 'approved'
-        : body.decision === 'reject'
-          ? 'rejected'
-          : null;
 
-      if (!decision) return NextResponse.json({ error: 'Invalid decision.' }, { status: 400 });
+      const decision =
+        body.decision === 'approve'
+          ? 'approved'
+          : body.decision === 'reject'
+            ? 'rejected'
+            : null;
+
+      if (!decision) {
+        return NextResponse.json(
+          { error: 'Invalid decision.' },
+          { status: 400 }
+        );
+      }
 
       const { error } = await supabase
         .from('profiles')
-        .update({ approval_status: decision, updated_at: new Date().toISOString() })
+        .update({
+          approval_status: decision,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', target)
         .eq('approval_status', 'pending');
 
       if (error) throw error;
+
       return NextResponse.json({ ok: true });
     }
 
-    return NextResponse.json({ error: 'Unknown action.' }, { status: 400 });
+    return NextResponse.json(
+      { error: 'Unknown action.' },
+      { status: 400 }
+    );
   } catch (error) {
     return authError(error);
   }
